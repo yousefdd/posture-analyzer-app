@@ -1,0 +1,79 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Publishing the APK as a release needs write access to the repo's contents.
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Tests
+        run: flutter test
+
+      - name: Release key
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > android/app/release.jks
+          cat > android/key.properties <<PROPS
+          storeFile=release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=release
+          keyPassword=$KEYSTORE_PASSWORD
+          PROPS
+
+      - name: Build APK
+        run: |
+          set -o pipefail
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 2>&1 | tee build.log || {
+            # Put the reason where the run summary shows it.
+            msg=$(grep -E -A12 "What went wrong|error:|Error:|^e: " build.log | head -80 | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g')
+            echo "::error title=APK build failed::${msg:-$(tail -40 build.log | sed ':a;N;$!ba;s/\n/%0A/g')}"
+            exit 1
+          }
+
+      - name: Name the APKs
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          mkdir -p out
+          # The website links to releases/latest/download/PostureAnalyzer.apk (64-bit,
+          # almost every phone) and PostureAnalyzer-32bit.apk (older phones).
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk out/PostureAnalyzer.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk out/PostureAnalyzer-32bit.apk
+          ls -lh out
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Publish the release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$VERSION-build$GITHUB_RUN_NUMBER"
+          gh release create "$TAG" out/PostureAnalyzer.apk out/PostureAnalyzer-32bit.apk \
+            --title "Posture Analyzer $VERSION (build $GITHUB_RUN_NUMBER)" \
+            --notes "نسخة أندرويد. حمّل PostureAnalyzer.apk لأغلب الهواتف، أو PostureAnalyzer-32bit.apk للهواتف القديمة." \
+            --latest
