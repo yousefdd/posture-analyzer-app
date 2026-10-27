@@ -54,7 +54,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       child: const Icon(Icons.delete, color: Fa.red),
                     ),
                     onDismissed: (_) async {
-                      await Store.remove(i);
+                      await Store.remove(list[i], i);
                       _load();
                     },
                     child: SessionTile(list[i]),

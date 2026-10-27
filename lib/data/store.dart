@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../analysis/analyzer.dart';
+import 'cloud.dart';
 
 /// A finished session, kept for the history list.
 class Session {
   Session({
+    this.id,
     required this.at,
     required this.exercise,
     required this.source,
@@ -14,6 +16,8 @@ class Session {
     this.video,
   });
 
+  /// The row id online (desktop version); null on the phone.
+  final String? id;
   final DateTime at;
   final Exercise exercise;
   final String source; // 'camera' or 'video'
@@ -34,7 +38,8 @@ class Session {
   static Session? fromJson(Map<String, dynamic> j) {
     try {
       return Session(
-        at: DateTime.parse(j['at'] as String),
+        id: j['id'] as String?,
+        at: DateTime.parse(j['at'] as String).toLocal(),
         exercise: Exercise.values.byName(j['exercise'] as String),
         source: j['source'] as String? ?? 'camera',
         report: Report(
@@ -83,7 +88,11 @@ class Store {
   static Future<bool> frontCamera() async => (await _p).getBool(_front) ?? true;
   static Future<void> saveFrontCamera(bool v) async => (await _p).setBool(_front, v);
 
+  /// Signed in on the desktop: the history lives online, on every computer.
+  static bool get _online => Cloud.user != null;
+
   static Future<List<Session>> history() async {
+    if (_online) return Cloud.history();
     final list = (await _p).getStringList(_history) ?? const [];
     return [
       for (final s in list)
@@ -92,12 +101,14 @@ class Store {
   }
 
   static Future<void> add(Session s) async {
+    if (_online) return Cloud.add(s);
     final p = await _p;
     final list = [jsonEncode(s.toJson()), ...(p.getStringList(_history) ?? const <String>[])];
     await p.setStringList(_history, list.take(maxHistory).toList());
   }
 
-  static Future<void> remove(int index) async {
+  static Future<void> remove(Session s, int index) async {
+    if (_online && s.id != null) return Cloud.remove(s.id!);
     final p = await _p;
     final list = [...(p.getStringList(_history) ?? const <String>[])];
     if (index >= 0 && index < list.length) list.removeAt(index);

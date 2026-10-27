@@ -20,6 +20,12 @@ dependencies:
   path_provider: ^2.1.5
   video_player: ^2.9.5
   wakelock_plus: 1.2.10
+  supabase_flutter: 2.15.4
+
+# app_links 6.4+ reads flutter.compileSdkVersion in its Android build,
+# which Flutter 3.24 does not provide to plugins yet.
+dependency_overrides:
+  app_links: 6.3.3
 
 dev_dependencies:
   flutter_test:

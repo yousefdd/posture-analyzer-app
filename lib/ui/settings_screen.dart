@@ -35,20 +35,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ? const SizedBox.shrink()
           : ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
               _section('الوقفة الرياضية', [
-                _slider('أقل مسافة للقدمين', '× طول الجذع', s.minRatio, 0.2, 4, 0.05, 2, (v) => _set(s.copyWith(minRatio: v))),
-                _slider('أقصى مسافة للقدمين', '× طول الجذع', s.maxRatio, 0.3, 5, 0.05, 2, (v) => _set(s.copyWith(maxRatio: v))),
+                _slider('أقل مسافة للقدمين', '× طول الجذع', s.minRatio, 0.2, 4, 0.05, 2,
+                    (v) => _set(s.copyWith(minRatio: v))),
+                _slider('أقصى مسافة للقدمين', '× طول الجذع', s.maxRatio, 0.3, 5, 0.05, 2,
+                    (v) => _set(s.copyWith(maxRatio: v))),
               ]),
               _section('السكوات', [
-                _slider('عمق السكوات (الركبة ≤)', '°', s.squatDepth, 40, 130, 5, 0, (v) => _set(s.copyWith(squatDepth: v))),
+                _slider(
+                    'عمق السكوات (الركبة ≤)', '°', s.squatDepth, 40, 130, 5, 0, (v) => _set(s.copyWith(squatDepth: v))),
               ]),
               _section('البوش أب', [
-                _slider('عمق البوش أب الكامل (≤)', '°', s.pushupDepth, 40, 120, 5, 0, (v) => _set(s.copyWith(pushupDepth: v))),
-                _slider('الحساسية (أقل حركة)', '°', s.pushupMinMove, 10, 60, 5, 0, (v) => _set(s.copyWith(pushupMinMove: v))),
+                _slider('عمق البوش أب الكامل (≤)', '°', s.pushupDepth, 40, 120, 5, 0,
+                    (v) => _set(s.copyWith(pushupDepth: v))),
+                _slider('الحساسية (أقل حركة)', '°', s.pushupMinMove, 10, 60, 5, 0,
+                    (v) => _set(s.copyWith(pushupMinMove: v))),
               ]),
               _section('عام', [
                 _switch('تنبيه صوتي', 'صوت عند الخطأ وعند التكرار الممتاز', s.sound, (v) => _set(s.copyWith(sound: v))),
                 _switch('قلب الكاميرا', 'عرض الصورة كالمرآة', s.mirror, (v) => _set(s.copyWith(mirror: v))),
-                _switch('تسجيل فيديو التحليل', 'يُحفظ فيديو الجلسة في المعرض', s.record, (v) => _set(s.copyWith(record: v))),
+                _switch('تسجيل فيديو التحليل', 'يُحفظ فيديو الجلسة في المعرض', s.record,
+                    (v) => _set(s.copyWith(record: v))),
               ]),
               if (err != null)
                 Padding(
@@ -77,7 +83,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
 
-  Widget _slider(String label, String unit, double v, double min, double max, double step, int digits, ValueChanged<double> on) =>
+  Widget _slider(String label, String unit, double v, double min, double max, double step, int digits,
+          ValueChanged<double> on) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SizedBox(height: 6),
         Row(children: [
@@ -86,7 +93,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           unit == '°'
               ? Text('${v.toStringAsFixed(digits)}°',
                   textDirection: TextDirection.ltr, style: const TextStyle(color: Fa.ink2, fontWeight: FontWeight.w800))
-              : Text('${v.toStringAsFixed(digits)} $unit', style: const TextStyle(color: Fa.ink2, fontWeight: FontWeight.w800)),
+              : Text('${v.toStringAsFixed(digits)} $unit',
+                  style: const TextStyle(color: Fa.ink2, fontWeight: FontWeight.w800)),
         ]),
         Slider(
           value: v.clamp(min, max),

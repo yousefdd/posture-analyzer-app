@@ -36,8 +36,11 @@ class ReportScreen extends StatelessWidget {
                   child: Center(
                     child: Text.rich(
                       TextSpan(children: [
-                        TextSpan(text: '${(v * 100).round()}', style: TextStyle(fontSize: 52, fontWeight: FontWeight.w800, color: c)),
-                        const TextSpan(text: '/100', style: TextStyle(fontSize: 18, color: Fa.ink2, fontWeight: FontWeight.w700)),
+                        TextSpan(
+                            text: '${(v * 100).round()}',
+                            style: TextStyle(fontSize: 52, fontWeight: FontWeight.w800, color: c)),
+                        const TextSpan(
+                            text: '/100', style: TextStyle(fontSize: 18, color: Fa.ink2, fontWeight: FontWeight.w700)),
                       ]),
                       textDirection: TextDirection.ltr,
                     ),
@@ -47,7 +50,8 @@ class ReportScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Text(r.evaluation, textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: c)),
+          Text(r.evaluation,
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: c)),
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.all(18),
@@ -59,7 +63,8 @@ class ReportScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Padding(padding: EdgeInsets.only(top: 7), child: Icon(Icons.circle, size: 7, color: Fa.green)),
+                    const Padding(
+                        padding: EdgeInsets.only(top: 7), child: Icon(Icons.circle, size: 7, color: Fa.green)),
                     const SizedBox(width: 10),
                     Expanded(child: Text(l, style: const TextStyle(fontSize: 15.5, color: Fa.ink, height: 1.4))),
                   ]),
@@ -69,14 +74,16 @@ class ReportScreen extends StatelessWidget {
                 Row(children: [
                   const Icon(Icons.video_library_outlined, color: Fa.blue, size: 20),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(session.video!, style: const TextStyle(color: Fa.blue, fontWeight: FontWeight.w700))),
+                  Expanded(
+                      child: Text(session.video!, style: const TextStyle(color: Fa.blue, fontWeight: FontWeight.w700))),
                 ]),
               ],
             ]),
           ),
           const SizedBox(height: 20),
           if (onRetry != null) ...[
-            OutlinedButton.icon(onPressed: () => onRetry!(context), icon: const Icon(Icons.replay), label: const Text('إعادة التحليل')),
+            OutlinedButton.icon(
+                onPressed: () => onRetry!(context), icon: const Icon(Icons.replay), label: const Text('إعادة التحليل')),
             const SizedBox(height: 10),
           ],
           OutlinedButton.icon(

@@ -29,10 +29,13 @@ class AnalysisPainter extends CustomPainter {
       canvas.drawLine(l, r, p);
       for (final x in [l, r]) {
         canvas.drawCircle(x, 22, Paint()..color = c);
-        canvas.drawCircle(x, 22, Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4);
+        canvas.drawCircle(
+            x,
+            22,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 4);
       }
       final ratio = a.ratio;
       if (ratio != null) _label(canvas, (l + r) / 2 + const Offset(0, -46), ratio.toStringAsFixed(2), c);
@@ -57,10 +60,13 @@ class AnalysisPainter extends CustomPainter {
       canvas.drawLine(j[1], j[2], line);
       for (final p in j) {
         canvas.drawCircle(p, 18, Paint()..color = c);
-        canvas.drawCircle(p, 18, Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4);
+        canvas.drawCircle(
+            p,
+            18,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 4);
       }
       final ang = a.angle;
       if (ang != null) _label(canvas, j[1] + const Offset(46, -46), '${ang.round()}°', c);
@@ -135,7 +141,9 @@ class StatsPanel extends StatelessWidget {
               Container(width: 9, height: 9, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
               const SizedBox(width: 8),
               Flexible(
-                child: Text(t, style: TextStyle(color: c == Fa.ink2 ? Fa.ink2 : Fa.ink, fontWeight: FontWeight.w700, fontSize: 14)),
+                child: Text(t,
+                    style:
+                        TextStyle(color: c == Fa.ink2 ? Fa.ink2 : Fa.ink, fontWeight: FontWeight.w700, fontSize: 14)),
               ),
             ]),
           ),

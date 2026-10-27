@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:gal/gal.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../analysis/analyzer.dart';
 import '../data/store.dart';
+import '../pose/live_source.dart';
 import '../pose/pose_camera.dart';
 import 'overlay.dart';
 import 'report_screen.dart';
@@ -28,7 +28,7 @@ class _LiveScreenState extends State<LiveScreen> {
   late final Analyzer _a = Analyzer.of(widget.exercise, widget.settings)
     ..sound = widget.settings.sound
     ..onBeep = Sfx.beep;
-  late final PoseCamera _camera = PoseCamera(front: widget.front, mirror: widget.settings.mirror);
+  late final LiveSource _camera = liveSource(front: widget.front, mirror: widget.settings.mirror);
   final _clock = Stopwatch();
   StreamSubscription<PoseSample>? _sub;
   Timer? _ticker;
@@ -109,20 +109,13 @@ class _LiveScreenState extends State<LiveScreen> {
     final duration = _now;
     _a.finish(duration);
     final report = _a.report(duration);
-    final video = await _camera.stop();
-    var saved = false;
-    if (video != null) {
-      try {
-        await Gal.putVideo(video, album: 'Posture Analyzer');
-        saved = true;
-      } catch (_) {}
-    }
+    final video = await _camera.stop(save: true);
     final session = Session(
       at: DateTime.now(),
       exercise: widget.exercise,
       source: 'camera',
       report: report,
-      video: saved ? 'تم حفظ فيديو الجلسة في المعرض (ألبوم Posture Analyzer)' : null,
+      video: video,
     );
     await Store.add(session);
     if (!mounted) return;
@@ -186,10 +179,17 @@ class _LiveScreenState extends State<LiveScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(10),
                     child: Column(children: [
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(child: StatsPanel(_a, now)),
-                        if (a is RepAnalyzer) ...[const SizedBox(width: 8), RepCounter(a.reps)],
-                      ]),
+                      // On a wide computer screen the panels keep a phone's width.
+                      Align(
+                        alignment: AlignmentDirectional.topStart,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Expanded(child: StatsPanel(_a, now)),
+                            if (a is RepAnalyzer) ...[const SizedBox(width: 8), RepCounter(a.reps)],
+                          ]),
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Row(children: [
                         Glass(
@@ -205,7 +205,8 @@ class _LiveScreenState extends State<LiveScreen> {
                           Glass(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.fiber_manual_record, size: 14, color: (_tick ~/ 2).isEven && !_paused ? Fa.red : Fa.ink3),
+                              Icon(Icons.fiber_manual_record,
+                                  size: 14, color: (_tick ~/ 2).isEven && !_paused ? Fa.red : Fa.ink3),
                               const SizedBox(width: 4),
                               const Text('REC', style: TextStyle(fontWeight: FontWeight.w800, color: Fa.red)),
                             ]),
@@ -213,9 +214,14 @@ class _LiveScreenState extends State<LiveScreen> {
                         ],
                       ]),
                       const Spacer(),
-                      StatusBar(status, tone, sub: sub),
-                      const SizedBox(height: 10),
-                      _controls(),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 760),
+                        child: Column(children: [
+                          StatusBar(status, tone, sub: sub),
+                          const SizedBox(height: 10),
+                          _controls(),
+                        ]),
+                      ),
                     ]),
                   ),
                 ),
@@ -258,7 +264,8 @@ class _LiveScreenState extends State<LiveScreen> {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
           setState(() {});
         }),
-      btn(_a.sound ? Icons.volume_up : Icons.volume_off, _a.sound ? 'الصوت' : 'مكتوم', () => setState(() => _a.sound = !_a.sound)),
+      btn(_a.sound ? Icons.volume_up : Icons.volume_off, _a.sound ? 'الصوت' : 'مكتوم',
+          () => setState(() => _a.sound = !_a.sound)),
       btn(Icons.flag, 'إنهاء', _finishing ? null : _finish, color: Fa.red.withOpacity(0.85)),
     ]);
   }
@@ -296,7 +303,8 @@ class _LiveScreenState extends State<LiveScreen> {
             ),
             const SizedBox(width: 12),
             FilledButton.icon(
-              style: FilledButton.styleFrom(minimumSize: const Size(140, 52), backgroundColor: Fa.red, foregroundColor: Colors.white),
+              style: FilledButton.styleFrom(
+                  minimumSize: const Size(140, 52), backgroundColor: Fa.red, foregroundColor: Colors.white),
               onPressed: _finish,
               icon: const Icon(Icons.flag),
               label: const Text('إنهاء'),

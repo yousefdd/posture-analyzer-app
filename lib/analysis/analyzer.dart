@@ -127,8 +127,7 @@ abstract class Analyzer {
   /// Called with each sound the screen should play.
   void Function(Beep beep)? onBeep;
 
-  factory Analyzer.of(Exercise e, Settings s) =>
-      e == Exercise.stance ? StanceAnalyzer(s) : RepAnalyzer(e, s);
+  factory Analyzer.of(Exercise e, Settings s) => e == Exercise.stance ? StanceAnalyzer(s) : RepAnalyzer(e, s);
 
   double vis(List<Lm> lm, int i) => lm[i].v;
 
@@ -401,8 +400,14 @@ class RepAnalyzer extends Analyzer {
   double badTotal = 0;
   double? peak;
 
-  static const legs = {'L': [23, 25, 27], 'R': [24, 26, 28]};
-  static const arms = {'L': [11, 13, 15], 'R': [12, 14, 16]};
+  static const legs = {
+    'L': [23, 25, 27],
+    'R': [24, 26, 28]
+  };
+  static const arms = {
+    'L': [11, 13, 15],
+    'R': [12, 14, 16]
+  };
 
   String? _pickSide(List<Lm> lm, Map<String, List<int>> ids) {
     final scores = {for (final s in ids.keys) s: ids[s]!.map((i) => vis(lm, i)).reduce(math.min)};
@@ -517,7 +522,8 @@ class RepAnalyzer extends Analyzer {
     _addRep(now);
   }
 
-  void _apply(double a, List<Offset> j, List<(Offset, Offset)> ex, bool inPosition, String? h, String? form, double now) {
+  void _apply(
+      double a, List<Offset> j, List<(Offset, Offset)> ex, bool inPosition, String? h, String? form, double now) {
     joints = j;
     extra = ex;
     angle = a;
@@ -600,7 +606,8 @@ class RepAnalyzer extends Analyzer {
           final t = (hip.dx - sh.dx) / (ank.dx - sh.dx);
           lineY = sh.dy + t * (ank.dy - sh.dy);
         }
-        form = hip.dy > lineY ? 'الورك منخفض - شدّ بطنك واجعل جسمك مستقيماً' : 'الورك مرتفع - اخفضه ليصبح جسمك مستقيماً';
+        form =
+            hip.dy > lineY ? 'الورك منخفض - شدّ بطنك واجعل جسمك مستقيماً' : 'الورك مرتفع - اخفضه ليصبح جسمك مستقيماً';
       }
     }
     _apply(a, p, ex, inPosition, h0, form, now);

@@ -6,7 +6,10 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../analysis/analyzer.dart';
 import '../data/store.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import '../pose/video_pose.dart';
+import '../pose/web_camera.dart';
 import 'overlay.dart';
 import 'report_screen.dart';
 import 'theme.dart';
@@ -38,7 +41,9 @@ class _VideoScreenState extends State<VideoScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    _sub = analyseVideo(widget.path, cancel: () => _cancel).listen(
+    final frames =
+        kIsWeb ? analyseVideoWeb(widget.path, cancel: () => _cancel) : analyseVideo(widget.path, cancel: () => _cancel);
+    _sub = frames.listen(
       (s) {
         final pts = s.sample.points;
         if (pts == null) {
@@ -67,7 +72,8 @@ class _VideoScreenState extends State<VideoScreen> {
     if (!mounted || _error != null) return;
     final duration = _t;
     _a.finish(duration);
-    final session = Session(at: DateTime.now(), exercise: widget.exercise, source: 'video', report: _a.report(duration));
+    final session =
+        Session(at: DateTime.now(), exercise: widget.exercise, source: 'video', report: _a.report(duration));
     await Store.add(session);
     if (!mounted) return;
     Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -100,7 +106,10 @@ class _VideoScreenState extends State<VideoScreen> {
         title: const Text('تحليل الفيديو', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: _error != null
-          ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18))))
+          ? Center(
+              child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18))))
           : Column(children: [
               LinearProgressIndicator(value: progress, minHeight: 6, color: Fa.green, backgroundColor: Fa.surface2),
               Expanded(
@@ -128,7 +137,9 @@ class _VideoScreenState extends State<VideoScreen> {
                       ]),
                       const Spacer(),
                       StatusBar(status, tone,
-                          sub: _duration > 0 ? 'جارٍ التحليل: ${_t.toStringAsFixed(1)} من ${_duration.toStringAsFixed(1)} ثانية' : 'جارٍ تجهيز الفيديو…'),
+                          sub: _duration > 0
+                              ? 'جارٍ التحليل: ${_t.toStringAsFixed(1)} من ${_duration.toStringAsFixed(1)} ثانية'
+                              : 'جارٍ تجهيز الفيديو…'),
                       const SizedBox(height: 10),
                       FilledButton.icon(
                         style: FilledButton.styleFrom(backgroundColor: Fa.red, foregroundColor: Colors.white),

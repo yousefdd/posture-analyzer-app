@@ -3,9 +3,11 @@ import 'dart:io' show Platform;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:gal/gal.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart' as mlkit;
 
 import '../analysis/analyzer.dart';
+import 'live_source.dart';
 
 /// One analysed frame: the 33 body points (0..1, already mirrored when the
 /// preview is) and the frame's upright width / height.
@@ -32,7 +34,7 @@ List<Lm> landmarksOf(mlkit.Pose pose, double width, double height, {required boo
 /// pose detection. Frames that arrive while ML Kit is busy are dropped, so
 /// the overlay stays live. It can record the session to a video at the same
 /// time.
-class PoseCamera {
+class PoseCamera implements LiveSource {
   PoseCamera({required this.front, required this.mirror});
 
   final bool front;
@@ -45,10 +47,15 @@ class PoseCamera {
   final _samples = StreamController<PoseSample>.broadcast();
   bool _busy = false;
   bool _closed = false;
-  bool recording = false;
+  bool _recording = false;
 
+  @override
+  bool get recording => _recording;
+
+  @override
   final ValueNotifier<bool> ready = ValueNotifier(false);
 
+  @override
   Stream<PoseSample> get samples => _samples.stream;
   bool get _mirrored => front && mirror;
 
@@ -60,6 +67,7 @@ class PoseCamera {
   }
 
   /// Opens the camera; [record] also starts a video of the session.
+  @override
   Future<void> start({bool record = false}) async {
     final cameras = await availableCameras();
     if (cameras.isEmpty) throw CameraException('none', 'No camera');
@@ -76,7 +84,7 @@ class PoseCamera {
     if (record) {
       try {
         await camera.startVideoRecording(onAvailable: _onImage);
-        recording = true;
+        _recording = true;
       } catch (_) {
         await camera.startImageStream(_onImage);
       }
@@ -126,24 +134,27 @@ class PoseCamera {
     );
   }
 
+  @override
   Future<void> pause() async {
     final c = _camera;
     if (c == null) return;
-    if (recording) {
+    if (_recording) {
       await c.pauseVideoRecording();
     }
     _closed = true;
   }
 
+  @override
   Future<void> resume() async {
     final c = _camera;
     if (c == null) return;
-    if (recording) await c.resumeVideoRecording();
+    if (_recording) await c.resumeVideoRecording();
     _closed = false;
   }
 
   /// The camera filling its box, with [overlay] drawn in the same
   /// 1000-high coordinate box so points land on the body.
+  @override
   Widget preview({Widget? overlay}) {
     return ValueListenableBuilder<bool>(
       valueListenable: ready,
@@ -171,8 +182,9 @@ class PoseCamera {
     );
   }
 
-  /// Stops everything; returns the recorded video's path, if any.
-  Future<String?> stop() async {
+  /// Stops everything; with [save], puts the recording in the gallery.
+  @override
+  Future<String?> stop({bool save = false}) async {
     _closed = true;
     final camera = _camera;
     _camera = null;
@@ -180,7 +192,7 @@ class PoseCamera {
     String? video;
     if (camera != null) {
       try {
-        if (recording && camera.value.isRecordingVideo) {
+        if (_recording && camera.value.isRecordingVideo) {
           video = (await camera.stopVideoRecording()).path;
         } else if (camera.value.isStreamingImages) {
           await camera.stopImageStream();
@@ -190,6 +202,12 @@ class PoseCamera {
     }
     await _detector.close();
     if (!_samples.isClosed) await _samples.close();
-    return video;
+    if (!save || video == null) return null;
+    try {
+      await Gal.putVideo(video, album: 'Posture Analyzer');
+      return 'تم حفظ فيديو الجلسة في المعرض (ألبوم Posture Analyzer)';
+    } catch (_) {
+      return null;
+    }
   }
 }
