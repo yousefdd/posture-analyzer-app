@@ -10,7 +10,21 @@
     video: null, stream: null, live: null, image: null, still: null,
     latest: null, running: false, error: null, mirror: true,
     recorder: null, chunks: [], fileVideo: null, canvas: null,
+    small: null, busyUntil: 0, cost: 30,
   };
+
+  // The model looks at a 256-pixel image, so a small copy of each frame is
+  // enough, and much cheaper than the full camera picture.
+  const DETECT_WIDTH = 320;
+
+  function shrink(v) {
+    const c = S.small || (S.small = document.createElement('canvas'));
+    const w = DETECT_WIDTH, h = Math.max(1, Math.round((v.videoHeight / v.videoWidth) * DETECT_WIDTH));
+    if (c.width !== w) c.width = w;
+    if (c.height !== h) c.height = h;
+    c.getContext('2d', { willReadFrequently: false }).drawImage(v, 0, 0, w, h);
+    return c;
+  }
 
   function cameraVideo() {
     if (!S.video) {
@@ -26,23 +40,64 @@
     return S.video;
   }
 
-  async function landmarker(mode) {
-    const key = mode === 'IMAGE' ? 'image' : 'live';
-    if (S[key]) return S[key];
+  async function create(mode, delegate) {
     const base = new URL('mediapipe/', document.baseURI).href;
     const vision = await import(base + 'vision_bundle.mjs');
     const fileset = await vision.FilesetResolver.forVisionTasks(base + 'wasm');
-    const options = (delegate) => ({
+    return vision.PoseLandmarker.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: base + 'pose_landmarker_lite.task', delegate },
       runningMode: mode,
       numPoses: 1,
     });
-    try {
-      S[key] = await vision.PoseLandmarker.createFromOptions(fileset, options('GPU'));
-    } catch (_) {
-      S[key] = await vision.PoseLandmarker.createFromOptions(fileset, options('CPU'));
+  }
+
+  // The graphics card is fastest on a good one, but on a weak or unsupported
+  // one the browser emulates it and it is many times slower than the
+  // processor. The live camera tries both on its first frames and keeps the
+  // faster; a video file uses the processor, which is fast and dependable.
+  async function landmarker(mode) {
+    const key = mode === 'IMAGE' ? 'image' : 'live';
+    if (S[key]) return S[key];
+    if (mode === 'IMAGE') {
+      S[key] = await create(mode, 'CPU');
+      return S[key];
     }
+    S.cpu = await create(mode, 'CPU');
+    try {
+      S.gpu = await create(mode, 'GPU');
+    } catch (_) {
+      S.gpu = null;
+    }
+    S.trial = { gpu: [], cpu: [] };
+    S[key] = S.gpu || S.cpu;
+    if (!S.gpu) S.trial = null;
     return S[key];
+  }
+
+  // Each trial detection's time; after six on each, the faster one stays.
+  function judge(spent) {
+    const t = S.trial;
+    if (!t) return;
+    const which = S.live === S.gpu ? 'gpu' : 'cpu';
+    t[which].push(spent);
+    // An emulated card is obvious at once (hundreds of ms): stop trying it.
+    if (which === 'gpu' && t.gpu.length >= 2 && spent > 150) {
+      t.gpu = Array(6).fill(Infinity);
+      S.live = S.cpu;
+      return;
+    }
+    if (which === 'gpu' && t.gpu.length >= 6) S.live = S.cpu;
+    if (t.gpu.length >= 6 && t.cpu.length >= 6) {
+      const mid = (a) => a.slice(1).sort((x, y) => x - y)[Math.floor((a.length - 1) / 2)];
+      const keep = mid(t.gpu) <= mid(t.cpu) ? 'gpu' : 'cpu';
+      S.live = keep === 'gpu' ? S.gpu : S.cpu;
+      const drop = keep === 'gpu' ? S.cpu : S.gpu;
+      try { drop.close(); } catch (_) {}
+      S.gpu = S.cpu = null;
+      S.trial = null;
+      S.delegate = keep;
+      S.cost = mid(keep === 'gpu' ? t.gpu : t.cpu);
+    }
   }
 
   function points(pose, mirror) {
@@ -52,15 +107,22 @@
   function loop() {
     if (!S.running) return;
     const v = S.video;
-    if (v && v.readyState >= 2 && S.live) {
-      const now = performance.now();
+    const now = performance.now();
+    // Detection runs on the page's own thread, so it leaves the page as much
+    // time again to draw between runs: smooth on slow computers, and as often
+    // as the camera allows on fast ones.
+    if (v && v.readyState >= 2 && S.live && v.videoWidth && now >= S.busyUntil) {
       try {
-        const r = S.live.detectForVideo(v, now);
+        const r = S.live.detectForVideo(shrink(v), now);
         const pose = r && r.landmarks && r.landmarks[0];
         S.latest = { t: now / 1000, w: v.videoWidth, h: v.videoHeight, lm: pose ? points(pose, S.mirror) : [] };
       } catch (e) {
         S.error = String(e);
       }
+      const spent = performance.now() - now;
+      if (S.trial) judge(spent);
+      else S.cost = 0.8 * S.cost + 0.2 * spent;
+      S.busyUntil = performance.now() + Math.max(1.2 * S.cost, 20);
     }
     if (v && 'requestVideoFrameCallback' in v) v.requestVideoFrameCallback(loop);
     else requestAnimationFrame(loop);
@@ -76,7 +138,7 @@
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no camera API');
         S.stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: front ? 'user' : 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: front ? 'user' : 'environment', width: { ideal: 960 }, height: { ideal: 540 } },
           audio: false,
         });
         const v = cameraVideo();
@@ -129,6 +191,13 @@
     },
     error: function () {
       return S.error;
+    },
+    // Milliseconds one detection takes, smoothed, and on what.
+    cost: function () {
+      return S.cost;
+    },
+    delegate: function () {
+      return S.delegate || (S.trial ? 'trying' : '');
     },
 
     // Records the camera to WebM while the session runs.

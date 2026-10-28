@@ -42,7 +42,9 @@ class PoseCamera implements LiveSource {
 
   CameraController? _camera;
   final _detector = mlkit.PoseDetector(
-    options: mlkit.PoseDetectorOptions(mode: mlkit.PoseDetectionMode.stream, model: mlkit.PoseDetectionModel.accurate),
+    // The base model keeps up with the camera on most phones; the accurate
+    // one is several times slower.
+    options: mlkit.PoseDetectorOptions(mode: mlkit.PoseDetectionMode.stream, model: mlkit.PoseDetectionModel.base),
   );
   final _samples = StreamController<PoseSample>.broadcast();
   bool _busy = false;
