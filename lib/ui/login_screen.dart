@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/cloud.dart';
+import 'institute_logo.dart';
 import 'theme.dart';
 
 /// Sign in, create an account, or ask for a password reset link: email and
@@ -95,6 +96,8 @@ class _LoginScreenState extends State<LoginScreen> {
               constraints: const BoxConstraints(maxWidth: 420),
               child: AutofillGroup(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  const Center(child: InstituteLogo(size: 110)),
+                  const SizedBox(height: 14),
                   Center(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),

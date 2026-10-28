@@ -7,6 +7,7 @@ import '../data/cloud.dart';
 import '../data/store.dart';
 import 'exercise_glyph.dart';
 import 'history_screen.dart';
+import 'institute_logo.dart';
 import 'live_screen.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
@@ -102,6 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(color: Fa.ink2, fontWeight: FontWeight.w700)),
                   ]),
                 ),
+                const InstituteLogo(size: 46),
+                const SizedBox(width: 4),
                 if (Cloud.user != null)
                   PopupMenuButton<String>(
                     tooltip: 'الحساب',
