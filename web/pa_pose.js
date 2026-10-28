@@ -51,26 +51,57 @@
     });
   }
 
+  // One load per kind, even when the home page's preload and the camera
+  // screen ask at the same moment.
+  const loading = {};
+  function landmarker(mode) {
+    const key = mode === 'IMAGE' ? 'image' : 'live';
+    if (S[key]) return Promise.resolve(S[key]);
+    if (!loading[key]) {
+      loading[key] = build(mode, key).finally(() => {
+        delete loading[key];
+      });
+    }
+    return loading[key];
+  }
+
   // The graphics card is fastest on a good one, but on a weak or unsupported
   // one the browser emulates it and it is many times slower than the
   // processor. The live camera tries both on its first frames and keeps the
   // faster; a video file uses the processor, which is fast and dependable.
-  async function landmarker(mode) {
-    const key = mode === 'IMAGE' ? 'image' : 'live';
-    if (S[key]) return S[key];
+  // A graphics card the browser only emulates (no real one, or blocked
+  // drivers): its first use alone freezes the page for seconds.
+  function emulatedGpu() {
+    try {
+      const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
+      if (!gl) return true;
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+      const lose = gl.getExtension('WEBGL_lose_context');
+      if (lose) lose.loseContext();
+      return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  async function build(mode, key) {
     if (mode === 'IMAGE') {
       S[key] = await create(mode, 'CPU');
       return S[key];
     }
     S.cpu = await create(mode, 'CPU');
     try {
-      S.gpu = await create(mode, 'GPU');
+      S.gpu = emulatedGpu() ? null : await create(mode, 'GPU');
     } catch (_) {
       S.gpu = null;
     }
     S.trial = { gpu: [], cpu: [] };
     S[key] = S.gpu || S.cpu;
-    if (!S.gpu) S.trial = null;
+    if (!S.gpu) {
+      S.trial = null;
+      S.delegate = 'cpu';
+    }
     return S[key];
   }
 
@@ -130,6 +161,11 @@
 
   window.paPose = {
     video: cameraVideo,
+
+    // Loads the model in the background while the user is still choosing.
+    preload: function () {
+      landmarker('VIDEO').catch(() => {});
+    },
 
     // Opens the webcam and the model; true once both run.
     start: async function (mirror, front) {

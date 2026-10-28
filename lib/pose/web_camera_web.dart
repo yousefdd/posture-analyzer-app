@@ -40,6 +40,12 @@ class WebCamera implements LiveSource {
     return (await _bridge.callMethod<JSPromise<JSBoolean>>('check'.toJS).toDart).toDart;
   }
 
+  /// Starts loading the body model in the background, so the camera
+  /// screen opens at once later.
+  static void preload() {
+    if (globalContext.has('paPose')) _bridge.callMethod('preload'.toJS);
+  }
+
   final _samples = StreamController<PoseSample>.broadcast();
   Timer? _poll;
   double _lastT = -1;

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../analysis/analyzer.dart';
 import '../data/cloud.dart';
 import '../data/store.dart';
+import '../pose/web_camera.dart';
 import 'exercise_glyph.dart';
 import 'history_screen.dart';
 import 'institute_logo.dart';
@@ -48,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _load();
+    if (kIsWeb) WebCamera.preload();
   }
 
   Future<void> _load() async {

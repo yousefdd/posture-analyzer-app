@@ -9,6 +9,7 @@ class WebCamera implements LiveSource {
   WebCamera({required bool front, required bool mirror});
 
   static Future<bool> check() async => false;
+  static void preload() {}
 
   @override
   final ValueNotifier<bool> ready = ValueNotifier(false);

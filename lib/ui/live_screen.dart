@@ -34,6 +34,7 @@ class _LiveScreenState extends State<LiveScreen> {
   Timer? _ticker;
   int _tick = 0;
   int _countdown = 3;
+  bool _starting = true; // the camera and the model are still opening
   bool _paused = false;
   bool _finishing = false;
   String? _error;
@@ -55,6 +56,8 @@ class _LiveScreenState extends State<LiveScreen> {
       if (mounted) setState(() => _error = 'تعذر فتح الكاميرا. اسمح للتطبيق باستخدامها من الإعدادات.');
       return;
     }
+    if (!mounted) return;
+    setState(() => _starting = false);
     _sub = _camera.samples.listen(_onSample);
     // The screen keeps time even when no frame arrives (the clock, "lost").
     _ticker = Timer.periodic(const Duration(milliseconds: 250), (_) {
@@ -225,7 +228,7 @@ class _LiveScreenState extends State<LiveScreen> {
                     ]),
                   ),
                 ),
-                if (_countdown > 0) _countdownView(),
+                if (_starting) _startingView() else if (_countdown > 0) _countdownView(),
                 if (_paused) _pausedView(),
               ]),
       ),
@@ -269,6 +272,19 @@ class _LiveScreenState extends State<LiveScreen> {
       btn(Icons.flag, 'إنهاء', _finishing ? null : _finish, color: Fa.red.withOpacity(0.85)),
     ]);
   }
+
+  Widget _startingView() => Container(
+        color: Colors.black.withOpacity(0.6),
+        alignment: Alignment.center,
+        child: const Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(width: 54, height: 54, child: CircularProgressIndicator(strokeWidth: 5, color: Fa.green)),
+          SizedBox(height: 20),
+          Text('جارٍ تشغيل الكاميرا وتجهيز التحليل…',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          SizedBox(height: 6),
+          Text('ثوانٍ قليلة فقط', style: TextStyle(fontSize: 15, color: Fa.ink2)),
+        ]),
+      );
 
   Widget _countdownView() => Container(
         color: Colors.black.withOpacity(0.45),
